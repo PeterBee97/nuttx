@@ -1,23 +1,30 @@
-/* Copyright 2018 Canaan Inc.
+/****************************************************************************
+ * arch/risc-v/src/k210/k210_spi.h
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-#ifndef _DRIVER_SPI_H
-#define _DRIVER_SPI_H
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ ****************************************************************************/
+
+#ifndef __ARCH_RISCV_SRC_K210_K210_SPI_H
+#define __ARCH_RISCV_SRC_K210_K210_SPI_H
 
 #include <stdint.h>
 #include <stddef.h>
-#include "dmac.h"
+#include "k210_dmac.h"
+#include "k210_plic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -140,12 +147,11 @@ typedef enum _spi_transfer_mode
     SPI_TMOD_EEROM
 } spi_transfer_mode_t;
 
-
 typedef enum _spi_transfer_width
 {
-    SPI_TRANS_CHAR  = 0x1,
+    SPI_TRANS_CHAR = 0x1,
     SPI_TRANS_SHORT = 0x2,
-    SPI_TRANS_INT   = 0x4,
+    SPI_TRANS_INT = 0x4,
 } spi_transfer_width_t;
 
 typedef enum _spi_chip_select
@@ -198,6 +204,9 @@ typedef struct _spi_slave_instance
     volatile uint8_t *config_ptr;
     uint32_t config_len;
     spi_slave_receive_callback_t callback;
+    uint8_t is_dual;
+    uint8_t mosi_pin;
+    uint8_t miso_pin;
 } spi_slave_instance_t;
 
 typedef struct _spi_data_t
@@ -447,24 +456,9 @@ uint32_t spi_set_clk_rate(spi_device_num_t spi_num, uint32_t spi_clk);
  *
  */
 void spi_dup_send_receive_data_dma(dmac_channel_number_t dma_send_channel_num,
-                               dmac_channel_number_t dma_receive_channel_num,
-                               spi_device_num_t spi_num, spi_chip_select_t chip_select,
-                               const uint8_t *tx_buf, size_t tx_len, uint8_t *rx_buf, size_t rx_len);
-
-/**
- * @brief       Set spi slave configuration
- *
- * @param[in]   int_pin             SPI master starts sending data interrupt.
- * @param[in]   ready_pin           SPI slave ready.
- * @param[in]   dmac_channel        Dmac channel number for block.
- * @param[in]   data_bit_length     Spi data bit length
- * @param[in]   data                SPI slave device data buffer.
- * @param[in]   len                 The length of SPI slave device data buffer.
- * @param[in]   callback            Callback of spi slave.
- *
- * @return      Void
- */
-void spi_slave_config(uint8_t int_pin, uint8_t ready_pin, dmac_channel_number_t dmac_channel, size_t data_bit_length, uint8_t *data, uint32_t len, spi_slave_receive_callback_t callback);
+                                   dmac_channel_number_t dma_receive_channel_num,
+                                   spi_device_num_t spi_num, spi_chip_select_t chip_select,
+                                   const uint8_t *tx_buf, size_t tx_len, uint8_t *rx_buf, size_t rx_len);
 
 /**
  * @brief       Spi handle transfer data operations
@@ -481,4 +475,4 @@ void spi_handle_data_dma(spi_device_num_t spi_num, spi_chip_select_t chip_select
 }
 #endif
 
-#endif /* _DRIVER_SPI_H */
+#endif /* __ARCH_RISCV_SRC_K210_K210_SPI_H */

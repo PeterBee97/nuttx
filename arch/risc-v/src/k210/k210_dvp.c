@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include "k210_dvp.h"
 #include "k210_memorymap.h"
+#include "k210_sysctl.h"
 #include "k210_fpioa.h"
 #include <math.h>
 
