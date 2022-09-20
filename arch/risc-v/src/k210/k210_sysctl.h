@@ -1054,13 +1054,6 @@ uint32_t sysctl_cpu_set_freq(uint32_t freq);
 uint32_t sysctl_pll_set_freq(sysctl_pll_t pll, uint32_t pll_freq);
 
 /**
- * @brief       Get the time start up to now
- *
- * @return      The time of microsecond
- */
-uint64_t sysctl_get_time_us(void);
-
-/**
  * @brief       Get reset status
  *
  * @return      The status of reset

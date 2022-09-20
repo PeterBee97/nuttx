@@ -19,6 +19,7 @@
 #include "k210_sysctl.h"
 #include "k210_fpioa.h"
 #include <math.h>
+#include <nuttx/arch.h>
 
 volatile dvp_t* const dvp = (volatile dvp_t*)K210_DVP_BASE;
 static uint8_t g_sccb_reg_len = 8;
@@ -112,15 +113,15 @@ static void k210_dvp_reset(void)
 {
     /* First power down */
     dvp->cmos_cfg |= DVP_CMOS_POWER_DOWN;
-    mdelay(200);
+    up_mdelay(200);
     dvp->cmos_cfg &= ~DVP_CMOS_POWER_DOWN;
-    mdelay(200);
+    up_mdelay(200);
 
     /* Second reset */
     dvp->cmos_cfg &= ~DVP_CMOS_RESET;
-    mdelay(200);
+    up_mdelay(200);
     dvp->cmos_cfg |= DVP_CMOS_RESET;
-    mdelay(200);
+    up_mdelay(200);
 }
 
 void k210_dvp_init(uint8_t reg_len)
@@ -266,7 +267,7 @@ void k210_dvp_disable_auto(void)
 
 void k210_dvp_set_output_enable(dvp_output_mode_t index, int enable)
 {
-    configASSERT(index < 2);
+    DEBUGASSERT(index < 2);
 
     if (index == 0)
     {

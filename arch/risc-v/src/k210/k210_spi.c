@@ -16,10 +16,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <nuttx/mutex.h>
+#include <debug.h>
 #include "k210_memorymap.h"
 #include "k210_fpioa.h"
 #include "k210_spi.h"
 #include "k210_sysctl.h"
+#include "chip.h"
+
+#define FIX_CACHE 0
 
 volatile spi_t *const spi[4] =
     {
@@ -62,8 +66,8 @@ static spi_frame_format_t spi_get_frame_format(spi_device_num_t spi_num)
             frf_offset = 21;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return -1;
         case 3:
         default:
             frf_offset = 22;
@@ -82,7 +86,7 @@ static spi_transfer_width_t spi_get_frame_size(size_t data_bit_length)
     return SPI_TRANS_INT;
 }
 
-static int spi_dma_irq(void *ctx)
+static int spi_dma_irq(int irq, FAR void *ctx, FAR void *arg)
 {
     spi_instance_t *v_instance = (spi_instance_t *)ctx;
     volatile spi_t *spi_handle = spi[v_instance->spi_num];
@@ -101,7 +105,7 @@ static int spi_dma_irq(void *ctx)
 
 static int spi_clk_init(uint8_t spi_num)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     if(spi_num == 3)
         sysctl_clock_set_clock_select(SYSCTL_CLOCK_SELECT_SPI3, 1);
     sysctl_clock_enable(SYSCTL_CLOCK_SPI0 + spi_num);
@@ -111,7 +115,7 @@ static int spi_clk_init(uint8_t spi_num)
 
 static void spi_set_tmod(uint8_t spi_num, uint32_t tmod)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX);
+    assert(spi_num < SPI_DEVICE_MAX);
     volatile spi_t *spi_handle = spi[spi_num];
     uint8_t tmod_offset = 0;
     switch(spi_num)
@@ -126,14 +130,14 @@ static void spi_set_tmod(uint8_t spi_num, uint32_t tmod)
             tmod_offset = 10;
             break;
     }
-    set_bit(&spi_handle->ctrlr0, 3 << tmod_offset, tmod << tmod_offset);
+    modifyreg32((uintptr_t)&spi_handle->ctrlr0, 3 << tmod_offset, (tmod & 3) << tmod_offset);
 }
 
 void spi_init(spi_device_num_t spi_num, spi_work_mode_t work_mode, spi_frame_format_t frame_format,
               size_t data_bit_length, uint32_t endian)
 {
-    configASSERT(data_bit_length >= 4 && data_bit_length <= 32);
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(data_bit_length >= 4 && data_bit_length <= 32);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     spi_clk_init(spi_num);
 
     uint8_t dfs_offset, frf_offset, work_mode_offset;
@@ -146,8 +150,8 @@ void spi_init(spi_device_num_t spi_num, spi_work_mode_t work_mode, spi_frame_for
             work_mode_offset = 6;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -159,13 +163,13 @@ void spi_init(spi_device_num_t spi_num, spi_work_mode_t work_mode, spi_frame_for
     switch(frame_format)
     {
         case SPI_FF_DUAL:
-            configASSERT(data_bit_length % 2 == 0);
+            assert(data_bit_length % 2 == 0);
             break;
         case SPI_FF_QUAD:
-            configASSERT(data_bit_length % 4 == 0);
+            assert(data_bit_length % 4 == 0);
             break;
         case SPI_FF_OCTAL:
-            configASSERT(data_bit_length % 8 == 0);
+            assert(data_bit_length % 8 == 0);
             break;
         default:
             break;
@@ -187,9 +191,9 @@ void spi_init(spi_device_num_t spi_num, spi_work_mode_t work_mode, spi_frame_for
 void spi_init_non_standard(spi_device_num_t spi_num, uint32_t instruction_length, uint32_t address_length,
                            uint32_t wait_cycles, spi_instruction_address_trans_mode_t instruction_address_trans_mode)
 {
-    configASSERT(wait_cycles < (1 << 5));
-    configASSERT(instruction_address_trans_mode < 3);
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(wait_cycles < (1 << 5));
+    assert(instruction_address_trans_mode < 3);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     volatile spi_t *spi_handle = spi[spi_num];
     uint32_t inst_l = 0;
     switch(instruction_length)
@@ -207,11 +211,11 @@ void spi_init_non_standard(spi_device_num_t spi_num, uint32_t instruction_length
             inst_l = 3;
             break;
         default:
-            configASSERT(!"Invalid instruction length");
-            break;
+            syslog(LOG_ERR, "Invalid instruction length");
+            return;
     }
 
-    configASSERT(address_length % 4 == 0 && address_length <= 60);
+    assert(address_length % 4 == 0 && address_length <= 60);
     uint32_t addr_l = address_length / 4;
 
     spi_handle->spi_ctrlr0 = (wait_cycles << 11) | (inst_l << 8) | (addr_l << 2) | instruction_address_trans_mode;
@@ -234,7 +238,7 @@ uint32_t spi_set_clk_rate(spi_device_num_t spi_num, uint32_t spi_clk)
 
 void spi_send_data_normal(spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint8_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     size_t index, fifo_len;
     spi_set_tmod(spi_num, SPI_TMOD_TRANS);
@@ -249,8 +253,8 @@ void spi_send_data_normal(spi_device_num_t spi_num, spi_chip_select_t chip_selec
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -321,7 +325,7 @@ void spi_send_data_normal(spi_device_num_t spi_num, spi_chip_select_t chip_selec
 void spi_send_data_standard(spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint8_t *cmd_buff,
                             size_t cmd_len, const uint8_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     uint8_t *v_buf = malloc(cmd_len + tx_len);
     size_t i;
     for(i = 0; i < cmd_len; i++)
@@ -337,7 +341,7 @@ void spi_send_data_standard_dma(dmac_channel_number_t channel_num, spi_device_nu
                                 spi_chip_select_t chip_select,
                                 const uint8_t *cmd_buff, size_t cmd_len, const uint8_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     volatile spi_t *spi_handle = spi[spi_num];
 
@@ -349,8 +353,8 @@ void spi_send_data_standard_dma(dmac_channel_number_t channel_num, spi_device_nu
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -399,7 +403,7 @@ void spi_send_data_normal_dma(dmac_channel_number_t channel_num, spi_device_num_
                               spi_chip_select_t chip_select,
                               const void *tx_buff, size_t tx_len, spi_transfer_width_t spi_transfer_width)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     spi_set_tmod(spi_num, SPI_TMOD_TRANS);
     volatile spi_t *spi_handle = spi[spi_num];
     uint32_t *buf;
@@ -469,8 +473,8 @@ void spi_dup_send_receive_data_dma(dmac_channel_number_t dma_send_channel_num,
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -580,7 +584,7 @@ void spi_dup_send_receive_data_dma(dmac_channel_number_t dma_send_channel_num,
 void spi_receive_data_standard(spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint8_t *cmd_buff,
                                size_t cmd_len, uint8_t *rx_buff, size_t rx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     size_t index, fifo_len;
     if(cmd_len == 0)
         spi_set_tmod(spi_num, SPI_TMOD_RECV);
@@ -596,8 +600,8 @@ void spi_receive_data_standard(spi_device_num_t spi_num, spi_chip_select_t chip_
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -675,7 +679,7 @@ void spi_receive_data_normal_dma(dmac_channel_number_t dma_send_channel_num,
                                  spi_device_num_t spi_num, spi_chip_select_t chip_select, const void *cmd_buff,
                                  size_t cmd_len, void *rx_buff, size_t rx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     if(cmd_len == 0)
         spi_set_tmod(spi_num, SPI_TMOD_RECV);
@@ -712,7 +716,7 @@ void spi_receive_data_standard_dma(dmac_channel_number_t dma_send_channel_num,
                                    spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint8_t *cmd_buff,
                                    size_t cmd_len, uint8_t *rx_buff, size_t rx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     volatile spi_t *spi_handle = spi[spi_num];
 
     uint8_t dfs_offset;
@@ -723,8 +727,8 @@ void spi_receive_data_standard_dma(dmac_channel_number_t dma_send_channel_num,
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -806,7 +810,7 @@ void spi_receive_data_standard_dma(dmac_channel_number_t dma_send_channel_num,
 void spi_receive_data_multiple(spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint32_t *cmd_buff,
                                size_t cmd_len, uint8_t *rx_buff, size_t rx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     size_t index, fifo_len;
     if(cmd_len == 0)
@@ -823,8 +827,8 @@ void spi_receive_data_multiple(spi_device_num_t spi_num, spi_chip_select_t chip_
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -890,7 +894,7 @@ void spi_receive_data_multiple_dma(dmac_channel_number_t dma_send_channel_num,
                                    spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint32_t *cmd_buff,
                                    size_t cmd_len, uint8_t *rx_buff, size_t rx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     volatile spi_t *spi_handle = spi[spi_num];
 
@@ -902,8 +906,8 @@ void spi_receive_data_multiple_dma(dmac_channel_number_t dma_send_channel_num,
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -977,7 +981,7 @@ void spi_receive_data_multiple_dma(dmac_channel_number_t dma_send_channel_num,
 void spi_send_data_multiple(spi_device_num_t spi_num, spi_chip_select_t chip_select, const uint32_t *cmd_buff,
                             size_t cmd_len, const uint8_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     size_t index, fifo_len;
     spi_set_tmod(spi_num, SPI_TMOD_TRANS);
@@ -1002,7 +1006,7 @@ void spi_send_data_multiple_dma(dmac_channel_number_t channel_num, spi_device_nu
                                 spi_chip_select_t chip_select,
                                 const uint32_t *cmd_buff, size_t cmd_len, const uint8_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
     volatile spi_t *spi_handle = spi[spi_num];
 
     uint8_t dfs_offset;
@@ -1013,8 +1017,8 @@ void spi_send_data_multiple_dma(dmac_channel_number_t channel_num, spi_device_nu
             dfs_offset = 16;
             break;
         case 2:
-            configASSERT(!"Spi Bus 2 Not Support!");
-            break;
+            syslog(LOG_ERR, "Spi Bus 2 Not Support!");
+            return;
         case 3:
         default:
             dfs_offset = 0;
@@ -1078,7 +1082,7 @@ void spi_send_data_multiple_dma(dmac_channel_number_t channel_num, spi_device_nu
 void spi_fill_data_dma(dmac_channel_number_t channel_num, spi_device_num_t spi_num, spi_chip_select_t chip_select,
                        const uint32_t *tx_buff, size_t tx_len)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
 
     spi_set_tmod(spi_num, SPI_TMOD_TRANS);
     volatile spi_t *spi_handle = spi[spi_num];
@@ -1099,25 +1103,25 @@ void spi_fill_data_dma(dmac_channel_number_t channel_num, spi_device_num_t spi_n
 
 void spi_handle_data_dma(spi_device_num_t spi_num, spi_chip_select_t chip_select, spi_data_t data, plic_interrupt_t *cb)
 {
-    configASSERT(spi_num < SPI_DEVICE_MAX && spi_num != 2);
-    configASSERT(chip_select < SPI_CHIP_SELECT_MAX);
+    assert(spi_num < SPI_DEVICE_MAX && spi_num != 2);
+    assert(chip_select < SPI_CHIP_SELECT_MAX);
     switch(data.transfer_mode)
     {
         case SPI_TMOD_TRANS_RECV:
         case SPI_TMOD_EEROM:
-            configASSERT(data.tx_buf && data.tx_len && data.rx_buf && data.rx_len);
+            assert(data.tx_buf && data.tx_len && data.rx_buf && data.rx_len);
             break;
         case SPI_TMOD_TRANS:
-            configASSERT(data.tx_buf && data.tx_len);
+            assert(data.tx_buf && data.tx_len);
             break;
         case SPI_TMOD_RECV:
-            configASSERT(data.rx_buf && data.rx_len);
+            assert(data.rx_buf && data.rx_len);
             break;
         default:
-            configASSERT(!"Transfer Mode ERR");
-            break;
+            syslog(LOG_ERR, "Transfer Mode ERR");
+            return;
     }
-    configASSERT(data.tx_channel < DMAC_CHANNEL_MAX && data.rx_channel < DMAC_CHANNEL_MAX);
+    assert(data.tx_channel < DMAC_CHANNEL_MAX && data.rx_channel < DMAC_CHANNEL_MAX);
     volatile spi_t *spi_handle = spi[spi_num];
 
     nxmutex_lock(&g_spi_instance[spi_num].lock);

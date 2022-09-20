@@ -1789,7 +1789,7 @@ uint32_t sysctl_pll_set_freq(sysctl_pll_t pll, uint32_t pll_freq)
     if(pll == SYSCTL_PLL0)
     {
         sysctl_clock_set_clock_select(SYSCTL_CLOCK_SELECT_ACLK, SYSCTL_SOURCE_PLL0);
-        uart_debug_init(-1);
+        // uart_debug_init(-1);
     }
     return result;
 }
@@ -1808,12 +1808,6 @@ uint32_t sysctl_cpu_set_freq(uint32_t freq)
 
     cpu_freq = sysctl_pll_set_freq(SYSCTL_PLL0, (sysctl->clk_sel0.aclk_divider_sel + 1) * 2 * freq);
     return cpu_freq;
-}
-
-uint64_t sysctl_get_time_us(void)
-{
-    uint64_t v_cycle = read_cycle();
-    return v_cycle * 1000000 / sysctl_clock_get_freq(SYSCTL_CLOCK_CPU);
 }
 
 sysctl_reset_enum_status_t sysctl_get_reset_status(void)

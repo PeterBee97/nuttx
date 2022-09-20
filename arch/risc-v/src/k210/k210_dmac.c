@@ -18,10 +18,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <nuttx/irq.h>
+#include <nuttx/arch.h>
 #include "k210_dmac.h"
 #include "k210_fpioa.h"
 #include "hardware/k210_plic.h"
-#include "riscv_internal.h"
+#include "chip.h"
+
+#define FIX_CACHE 0
 
 volatile dmac_t *const dmac = (dmac_t *)K210_DMAC_BASE;
 
@@ -867,7 +870,7 @@ void dmac_irq_register(dmac_channel_number_t channel_num, xcpt_t dmac_callback, 
     // plic_irq_register(IRQN_DMA0_INTERRUPT + channel_num, dmac_irq_callback, &dmac_context[channel_num]);
     // plic_irq_enable(IRQN_DMA0_INTERRUPT + channel_num);
     int irq_num = IRQN_DMA0_INTERRUPT + channel_num;
-    putreg32(priority, PLIC_PRIO_BASE + irq_num * 4);
+    putreg32(priority, (uintptr_t)(PLIC_PRIO_BASE + irq_num * 4));
     irq_attach(irq_num, dmac_irq_callback, ctx);
     up_enable_irq(irq_num);
 }
