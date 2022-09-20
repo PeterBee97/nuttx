@@ -34,4 +34,6 @@ ifeq ($(CONFIG_DEV_GPIO),y)
 CSRCS += k210_gpio.c
 endif
 
+CSRCS += k210_nt35310.c
+
 include $(TOPDIR)/boards/Board.mk

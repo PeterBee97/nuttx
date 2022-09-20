@@ -54,6 +54,33 @@ typedef struct _spi_instance_t
     mutex_t lock;
 } spi_instance_t;
 
+// static const struct spi_ops_s k210_spi2_ops =
+// {
+//   .lock              = k210_spi_lock,
+//   .select            = k210_spi_select,
+//   .setfrequency      = k210_spi_setfrequency,
+//   .setmode           = k210_spi_setmode,
+//   .setbits           = k210_spi_setbits,
+// #ifdef CONFIG_SPI_HWFEATURES
+//   .hwfeatures        = k210_spi_hwfeatures,
+// #endif
+//   .status            = k210_spi2_status,
+// #ifdef CONFIG_SPI_CMDDATA
+//   .cmddata           = k210_spi2_cmddata,
+// #endif
+//   .send              = k210_spi_send,
+// #ifdef CONFIG_SPI_EXCHANGE
+//   .exchange          = k210_spi_exchange,
+// #else
+//   .sndblock          = k210_spi_sndblock,
+//   .recvblock         = k210_spi_recvblock,
+// #endif
+// #ifdef CONFIG_SPI_TRIGGER
+//   .trigger           = k210_spi_trigger,
+// #endif
+//   .registercallback  = NULL,
+// };
+
 static spi_instance_t g_spi_instance[4];
 
 static spi_frame_format_t spi_get_frame_format(spi_device_num_t spi_num)
