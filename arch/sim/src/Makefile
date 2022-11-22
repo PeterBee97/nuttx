@@ -204,6 +204,12 @@ ifeq ($(CONFIG_SIM_SOUND_ALSA),y)
   STDLIBS += -lmad
 endif
 
+ifeq ($(CONFIG_SIM_VIDEO_V4L2),y)
+  HOSTSRCS += sim_video_host.c
+  CSRCS += sim_video.c
+  STDLIBS += -lv4l2
+endif
+
 ifeq ($(CONFIG_SIM_HOSTFS),y)
   HOSTSRCS += sim_hostfs.c
 
