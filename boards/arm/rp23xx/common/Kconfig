@@ -501,6 +501,23 @@ config RP23XX_I2S_CLOCK
 
 endif # RP23XX_I2S
 
+#####################################################################
+#  PDM Configuration
+#####################################################################
+
+if RP23XX_PDM
+
+config RP23XX_PDM_CLOCK
+	int "GPIO pin for PDM CLOCK (0-29)"
+	default 7
+	range 0 29
+
+config RP23XX_PDM_DATA
+	int "GPIO pin for PDM DATA (0-29)"
+	default 8
+	range 0 29
+
+endif # RP23XX_PDM
 
 #####################################################################
 #  WS2812 Configuration

@@ -30,6 +30,7 @@
 #include "rp23xx_i2cdev.h"
 #include "rp23xx_spidev.h"
 #include "rp23xx_i2sdev.h"
+#include "rp23xx_pdmdev.h"
 #include "rp23xx_spisd.h"
 
 #ifndef __ASSEMBLY__
