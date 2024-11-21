@@ -512,6 +512,10 @@ config AUDIO_I2S
 	depends on AUDIO
 	depends on I2S
 
+config AUDIO_PDM
+	bool "Audio PDM"
+	depends on AUDIO
+
 config AUDIO_DMA
 	bool "Audio DMA"
 	select AUDIO_DRIVER_SPECIFIC_BUFFERS

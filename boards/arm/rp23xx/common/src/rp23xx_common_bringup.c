@@ -413,6 +413,14 @@ int rp23xx_common_bringup(void)
     }
 #endif
 
+#ifdef CONFIG_RP23XX_PDM
+  ret = board_pdmdev_initialize(0);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize PDM.\n");
+    }
+#endif
+
 #ifdef CONFIG_DEV_GPIO
   ret = rp23xx_dev_gpio_init();
   if (ret < 0)

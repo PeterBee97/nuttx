@@ -702,6 +702,34 @@ config RP23XX_I2S_PIO_SM
 endif # RP23XX_I2S
 
 #####################################################################
+#  PDM Configuration
+#####################################################################
+
+config RP23XX_PDM
+	bool "PDM"
+	---help---
+		See the Board Selection menu to configure the pins used by PDM.
+
+if RP23XX_PDM
+
+config RP23XX_PDM_MAXINFLIGHT
+	int "PDM queue size"
+	default 16
+	---help---
+		This is the total number of transfers that can be enqueue before
+		the caller is required to wait.  This setting determines the number
+		certain queue data structures that will be pre-allocated.
+
+config RP23XX_PDM_DATALEN
+	int "Data width (bits)"
+	default 16
+	---help---
+		Data width in bits.  This is a default value and may be change
+		via the PDM interface
+
+endif # RP23XX_PDM
+
+#####################################################################
 #  SPISD Configuration
 #####################################################################
 

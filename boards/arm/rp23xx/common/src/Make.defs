@@ -53,6 +53,10 @@ ifeq ($(CONFIG_RP23XX_I2S),y)
 CSRCS += rp23xx_i2sdev.c
 endif
 
+ifeq ($(CONFIG_RP23XX_PDM),y)
+CSRCS += rp23xx_pdmdev.c
+endif
+
 ifeq ($(CONFIG_LCD_SSD1306),y)
 CSRCS += rp23xx_ssd1306.c
 endif
