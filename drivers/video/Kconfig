@@ -498,6 +498,13 @@ config VIDEO_GC0308
 	---help---
 		GC0308 VGA CMOS image sensor with DVP interface.
 
+config VIDEO_OV5640
+	bool "OV5640 camera chip"
+	default n
+	select I2C
+	---help---
+		OV5640 CMOS image sensor with two-lane MIPI CSI-2 output.
+
 config GOLDFISH_CAMERA
 	bool "Goldfish camera support"
 	depends on VIDEO

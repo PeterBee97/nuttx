@@ -172,7 +172,6 @@ config TITAN_MINI_AUDIO
 	select I2S
 	select RA8P1_SSI0
 	select SCHED_HPWORK
-	select SCHED_WORKQUEUE
 	help
 		Enable 16 kHz, signed 16-bit stereo playback through SSI0 and
 		the onboard ES8156 codec.  The PCM output is /dev/audio/pcm0.

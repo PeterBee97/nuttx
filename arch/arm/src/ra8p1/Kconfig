@@ -178,9 +178,18 @@ config RA8P1_USBFS
 config RA8P1_SSI0
 	bool "SSI0 I2S controller"
 	default n
-	depends on I2S
+	depends on I2S && SCHED_HPWORK
 	help
 		Enable SSI0 as a 16-bit stereo playback I2S lower-half.
+
+config RA8P1_SSI0_MAXINFLIGHT
+	int "Maximum queued SSI0 transfers"
+	default 8
+	range 1 32
+	depends on RA8P1_SSI0
+	help
+		Number of statically allocated I2S transfer containers.  This
+		bounds both memory use and the number of queued audio buffers.
 
 config RA8P1_CAMERA
 	bool
