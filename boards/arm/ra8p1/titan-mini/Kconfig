@@ -1,0 +1,262 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+if ARCH_BOARD_TITAN_MINI
+
+config TITAN_MINI_USERLEDS
+	bool "Titan Mini RGB user LEDs"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select USERLED
+	select USERLED_LOWER
+	help
+		Enable the active-low onboard RGB LED and register
+		/dev/userleds.
+
+config TITAN_MINI_BUTTONS
+	bool "Titan Mini USER/BOOT button"
+	default n
+	select ARCH_BUTTONS
+	select ARCH_IRQBUTTONS
+	select BOARD_LATE_INITIALIZE
+	select INPUT
+	select INPUT_BUTTONS
+	select INPUT_BUTTONS_LOWER
+	help
+		Enable polling and falling-edge interrupt support for the active-low
+		USER/BOOT button on P2.01 and register /dev/buttons.
+
+config TITAN_MINI_GPIO
+	bool "Titan Mini GPIO test nodes"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select DEV_GPIO
+	help
+		Register the green, red and blue LED pins as /dev/gpio0-2 and
+		the USER/BOOT button as the pull-up input /dev/gpio3.
+
+config TITAN_MINI_PWM6
+	bool "Titan Mini GPT6A PWM on P6.01"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_GPT6_PWM
+	help
+		Enable GPT6A on P6.01 (40-pin header pin 7) and register it as
+		the first available /dev/pwmN device.
+
+config TITAN_MINI_PWM7
+	bool "Titan Mini GPT7B PWM on P3.03"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_GPT7_PWM
+	help
+		Enable the SDK-configured GPT7B output on P3.03 and register it
+		as the next available /dev/pwmN device.
+
+config TITAN_MINI_PWM9
+	bool "Titan Mini GPT9B PWM on P4.10"
+	default n
+	depends on !RA8P1_I2C0
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_GPT9_PWM
+	help
+		Enable the SDK-configured GPT9B output on P4.10 and register it
+		as the next available /dev/pwmN device.  P4.10 is also IIC0 SCL,
+		so this option is unavailable while IIC0 is enabled.
+
+config TITAN_MINI_PWM10
+	bool "Titan Mini GPT10 PWM on the red and green LEDs"
+	default n
+	depends on !TITAN_MINI_USERLEDS && !TITAN_MINI_GPIO
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_GPT10_PWM
+	help
+		Enable the SDK-configured GPT10A and GPT10B outputs on P1.09 and
+		P1.08 and register them as one /dev/pwmN device.  Both outputs
+		use the same period and duty cycle.  These pins are also the
+		active-low red and green user LEDs.
+
+config TITAN_MINI_OSPI
+	bool "Titan Mini W25Q64 OSPI flash"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select MTD
+	select MTD_W25QXXXJV
+	select RA8P1_OSPI_B
+	help
+		Enable the onboard W25Q64JVSSIQ on OSPI0 chip select 1 and
+		register the full flash as /dev/ospi0.
+
+config TITAN_MINI_OSPI_FILESYSTEM
+	bool "Register the SDK LittleFS partition"
+	default y
+	depends on TITAN_MINI_OSPI
+	select FS_LITTLEFS
+	select MTD_PARTITION
+	help
+		Register the SDK filesystem partition at offset 2 MiB with a
+		length of 1 MiB as /dev/ospi_fs.  This option never formats the
+		partition.
+
+config TITAN_MINI_OSPI_AUTOMOUNT
+	bool "Mount the OSPI LittleFS partition at /fal"
+	default y
+	depends on TITAN_MINI_OSPI_FILESYSTEM
+	help
+		Mount the existing filesystem partition at /fal during board
+		initialization.  A mount failure is reported without formatting
+		or erasing the partition.
+
+config TITAN_MINI_SDHI
+	bool "Titan Mini microSD slot"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select MMCSD
+	select MMCSD_HAVE_CARDDETECT
+	select MMCSD_SDIO
+	select RA8P1_SDHI0
+	select SCHED_HPWORK
+	select SCHED_WORKQUEUE
+	select SDIO_BLOCKSETUP
+	help
+		Enable the onboard four-bit microSD slot on SDHI0.  An inserted
+		card is registered through the NuttX MMC/SD stack as /dev/mmcsd0.
+
+config TITAN_MINI_SPI1
+	bool "Titan Mini SPI1 header"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_SPI1
+	select SPI_DRIVER
+	help
+		Enable SPI1 on P1.02/P7.08/P7.09 with a software-controlled
+		active-low chip select on P1.05 and register /dev/spi1.
+
+config TITAN_MINI_CANFD0
+	bool "Titan Mini CAN FD port"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select CAN
+	select CAN_ERRORS
+	select CAN_EXTID
+	select CAN_FD
+	select CAN_USE_RTR
+	select RA8P1_CANFD0
+	help
+		Enable CANFD0 on P3.11/P3.12 and register /dev/can0.  The
+		onboard TJA1042 transceiver is always enabled and the bus has
+		a fixed 120 ohm termination resistor.
+
+config TITAN_MINI_USBFS_CDC
+	bool "Titan Mini USBFS CDC ACM"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select CDCACM
+	select RA8P1_USBFS
+	help
+		Enable the USBFS device port on P8.14/P8.15 and register the
+		CDC ACM data interface as /dev/ttyACM0.  SCI1 remains the NSH
+		console.
+
+config TITAN_MINI_AUDIO
+	bool "Titan Mini SSI0 and ES8156 audio output"
+	default n
+	depends on RA8P1_I2C1
+	select AUDIO
+	select AUDIO_FORMAT_PCM
+	select AUDIO_I2S
+	select BOARD_LATE_INITIALIZE
+	select DRIVERS_AUDIO
+	select I2S
+	select RA8P1_SSI0
+	select SCHED_HPWORK
+	select SCHED_WORKQUEUE
+	help
+		Enable 16 kHz, signed 16-bit stereo playback through SSI0 and
+		the onboard ES8156 codec.  The PCM output is /dev/audio/pcm0.
+
+config TITAN_MINI_ADC
+	bool "Titan Mini ADC_B0 channel 0 on P0.00"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_ADC_B
+	help
+		Enable ADC_B0 channel 0 on P0.00 (40-pin header pin 11) and
+		register it as /dev/adc0.
+
+config TITAN_MINI_RTC
+	bool "Titan Mini real-time clock"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_RTC
+	help
+		Enable the RA8P1 calendar RTC and register it as /dev/rtc0.
+
+config TITAN_MINI_WDT
+	bool "Titan Mini watchdog timer"
+	default n
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_WDT
+	help
+		Enable the RA8P1 watchdog and register it as /dev/watchdog0.
+
+config TITAN_MINI_ETHOSU55
+	bool "Titan Mini Arm Ethos-U55 NPU"
+	default n
+	depends on BUILD_FLAT && !ARMV8M_DCACHE
+	select BOARD_LATE_INITIALIZE
+	select RA8P1_ETHOSU55
+	help
+		Initialize the U55-256 neural processing unit and register
+		/dev/ethosu0.  Inference models and examples are controlled by
+		separate application options.
+
+config TITAN_MINI_CAMERA
+	bool "Titan Mini OV5640 MIPI CSI-2 camera"
+	default n
+	depends on RA8P1_I2C0 && RA8P1_SDRAM && !ARMV8M_DCACHE
+	select BOARD_LATE_INITIALIZE
+	select DRIVERS_VIDEO
+	select RA8P1_CAMERA
+	select RA8P1_GPT11
+	select VIDEO_OV5640
+	select VIDEO_STREAM
+	help
+		Enable the onboard two-lane OV5640 camera and register it as
+		/dev/video.  VGA and QVGA YUYV capture are supported.
+
+config TITAN_MINI_PDM
+	bool "Titan Mini stereo PDM microphone capture"
+	default n
+	select BOARD_LATE_INITIALIZE
+	help
+		Enable /dev/pdm0 as 16 kHz, signed 16-bit, interleaved stereo
+		capture.  The two onboard microphones share PDM_DAT1.  The left
+		channel is sampled on the falling edge and the right channel is
+		sampled on the rising edge.
+
+config TITAN_MINI_PDM_BUFFER_FRAMES
+	int "PDM capture ring size in stereo frames"
+	default 4096
+	range 512 16384
+	depends on TITAN_MINI_PDM
+	help
+		Number of stereo frames held in the static capture ring.  A frame
+		contains one signed 16-bit left sample and one signed 16-bit right
+		sample.
+
+config TITAN_MINI_IMU
+	bool "Titan Mini LSM6DS3TR-C IMU"
+	default n
+	depends on RA8P1_I2C1
+	select BOARD_LATE_INITIALIZE
+	select SENSORS
+	select SENSORS_LSM6DS3TRC
+	help
+		Enable the onboard LSM6DS3TR-C accelerometer and gyroscope on
+		IIC1.  The devices are registered as uORB sensor_accel0 and
+		sensor_gyro0 nodes.
+
+endif # ARCH_BOARD_TITAN_MINI

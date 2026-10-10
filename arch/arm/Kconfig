@@ -390,6 +390,15 @@ config ARCH_CHIP_RA8M1
 	---help---
 		Renesas RA8M1 Family (ARM Cortex-M85).
 
+config ARCH_CHIP_RA8P1
+	bool "Renesas RA8P1"
+	select ARCH_CORTEXM85
+	select ARCH_HAVE_FPU
+	select ARMV8M_HAVE_ICACHE
+	select ARMV8M_HAVE_DCACHE
+	---help---
+		Renesas RA8P1 Cortex-M85 (CPU0), secure flat build.
+
 config ARCH_CHIP_RP2040
 	bool "Raspberry Pi RP2040"
 	select ARCH_CORTEXM0
@@ -1368,6 +1377,7 @@ config ARCH_CHIP
 	default "nuc1xx"	if ARCH_CHIP_NUC1XX
 	default "ra4"			if ARCH_CHIP_RA4
 	default "ra8m1"			if ARCH_CHIP_RA8M1
+	default "ra8p1"			if ARCH_CHIP_RA8P1
 	default "rp2040"	if ARCH_CHIP_RP2040
 	default "rp23xx"	if ARCH_CHIP_RP23XX
 	default "s32k1xx"	if ARCH_CHIP_S32K1XX
@@ -1881,6 +1891,9 @@ source "arch/arm/src/ra4/Kconfig"
 endif
 if ARCH_CHIP_RA8M1
 source "arch/arm/src/ra8m1/Kconfig"
+endif
+if ARCH_CHIP_RA8P1
+source "arch/arm/src/ra8p1/Kconfig"
 endif
 if ARCH_CHIP_RP2040
 source "arch/arm/src/rp2040/Kconfig"

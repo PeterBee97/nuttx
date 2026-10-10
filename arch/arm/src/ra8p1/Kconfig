@@ -1,0 +1,211 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config ARCH_CHIP_R7KA8P1KF
+	bool
+	default y
+
+config RA_SCI1_UART
+	bool "SCI1 UART"
+	default y
+	select SCI1_SERIALDRIVER
+
+config RA_SCI2_UART
+	bool "SCI2 UART"
+	default n
+	select SCI2_SERIALDRIVER
+
+config RA8P1_SDRAM
+	bool "External SDRAM"
+	default n
+	depends on ARCH_BOARD_TITAN_MINI
+	depends on MM_REGIONS > 1
+	help
+		Initialize the Titan Mini 32 MiB external SDRAM and add its
+		non-DMA portion as a second user heap region.
+
+config RA8P1_I2C
+	bool
+	default n
+	select I2C
+	select I2C_DRIVER
+	select I2C_POLLED
+
+config RA8P1_I2C0
+	bool "IIC0 master"
+	default n
+	select RA8P1_I2C
+	help
+		Enable the native polling IIC0 master driver.  The driver supports
+		7-bit devices at 100 kHz and 400 kHz.
+
+config RA8P1_I2C1
+	bool "IIC1 master"
+	default n
+	select RA8P1_I2C
+	help
+		Enable the native polling IIC1 master driver.  The driver supports
+		7-bit devices at 100 kHz and 400 kHz.
+
+config RA8P1_OSPI_B
+	bool "OSPI_B controller"
+	default n
+	help
+		Enable the RA8P1 OSPI_B controller as a NuttX QSPI lower-half.
+		The current implementation supports OSPI0 chip select 1 in
+		standard 1S-1S-1S mode.
+
+config RA8P1_SDHI0
+	bool "SDHI0 controller"
+	default n
+	select ARCH_HAVE_SDIO
+	help
+		Enable the RA8P1 SDHI0 controller as a NuttX SDIO lower-half.
+		The initial implementation supports polling FIFO transfers and
+		hardware card detection.
+
+config RA8P1_SPI1
+	bool "SPI1 controller"
+	default n
+	select SPI
+	select SPI_EXCHANGE
+	help
+		Enable the RA8P1 SPI1 controller as a polling NuttX SPI
+		lower-half.
+
+config RA8P1_CANFD0
+	bool "CANFD0 controller"
+	default n
+	depends on CAN
+	select ARCH_HAVE_CAN_ERRORS
+	help
+		Enable CANFD0 as a NuttX CAN character lower-half.  The controller
+		supports standard and extended identifiers, CAN FD with bit-rate
+		switching, listen-only mode and internal loopback.
+
+config RA8P1_CANFD0_BITRATE
+	int "CANFD0 nominal bitrate"
+	default 500000
+	range 10000 1000000
+	depends on RA8P1_CANFD0
+
+config RA8P1_CANFD0_DATA_BITRATE
+	int "CANFD0 data bitrate"
+	default 2000000
+	range 500000 8000000
+	depends on RA8P1_CANFD0
+
+config RA8P1_GPT11
+	bool "GPT11"
+	default n
+	help
+		Enable the GPT clock used by channel 11.
+
+config RA8P1_GPT_PWM
+	bool
+	default n
+	select PWM
+
+config RA8P1_GPT6_PWM
+	bool "GPT6 PWM"
+	default n
+	select RA8P1_GPT_PWM
+	help
+		Enable GPT6 as a PWM lower-half driver.
+
+config RA8P1_GPT7_PWM
+	bool "GPT7 PWM"
+	default n
+	select RA8P1_GPT_PWM
+	help
+		Enable GPT7 as a PWM lower-half driver.
+
+config RA8P1_GPT9_PWM
+	bool "GPT9 PWM"
+	default n
+	select RA8P1_GPT_PWM
+	help
+		Enable GPT9 as a PWM lower-half driver.
+
+config RA8P1_GPT10_PWM
+	bool "GPT10 PWM"
+	default n
+	select RA8P1_GPT_PWM
+	help
+		Enable GPT10 as a PWM lower-half driver.
+
+config RA8P1_ADC_B
+	bool "ADC_B"
+	default n
+	select ANALOG
+	select ADC
+	help
+		Enable the RA8P1 ADC_B polling lower-half driver.
+
+config RA8P1_RTC
+	bool "Real-time clock"
+	default n
+	select RTC
+	select RTC_ARCH
+	select RTC_DATETIME
+	select RTC_DRIVER
+	help
+		Enable the RA8P1 calendar RTC using the low-power on-chip
+		oscillator.
+
+config RA8P1_WDT
+	bool "Watchdog timer"
+	default n
+	select WATCHDOG
+	help
+		Enable the RA8P1 register-start watchdog lower-half driver.
+
+config RA8P1_WDT_STOP_IN_SLEEP
+	bool "Stop watchdog in sleep mode"
+	default n
+	depends on RA8P1_WDT
+	help
+		Pause the watchdog counter while the CPU is sleeping.  Leave this
+		disabled when the watchdog must continue counting during idle.
+
+config RA8P1_USBFS
+	bool "USBFS device controller"
+	default n
+	select USBDEV
+	help
+		Enable the native NuttX lower-half for the RA8P1 USB full-speed
+		device controller.
+
+config RA8P1_SSI0
+	bool "SSI0 I2S controller"
+	default n
+	depends on I2S
+	help
+		Enable SSI0 as a 16-bit stereo playback I2S lower-half.
+
+config RA8P1_CAMERA
+	bool
+	default n
+	depends on RA8P1_I2C0 && RA8P1_SDRAM && !ARMV8M_DCACHE
+
+config RA8P1_ETHOSU55
+	bool "Arm Ethos-U55 NPU"
+	default n
+	depends on BUILD_FLAT && !ARMV8M_DCACHE
+	select AI_ENGINE
+	select AI_ENGINE_ETHOSU
+	help
+		Enable the NuttX AI engine lower-half for the RA8P1 U55-256 NPU.
+		It supports hardware information queries, PMU cycle measurement
+		and Vela command-stream invocation through the public Ethos-U
+		AI engine ioctl extension.
+
+config RA8P1_ETHERNET
+	bool "RMAC Ethernet"
+	default n
+	depends on NET && !ARMV8M_DCACHE
+	select NET_ETHERNET
+	select SCHED_WORKQUEUE
+	select SCHED_LPWORK
+	help
+		RA8P1 RMAC and layer-3 switch with an external RGMII PHY.
+		DMA buffers currently require the data cache to be disabled.
