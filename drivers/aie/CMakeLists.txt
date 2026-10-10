@@ -22,4 +22,11 @@
 
 if(CONFIG_AI_ENGINE)
   target_sources(drivers PRIVATE ai_engine.c)
+
+  if(CONFIG_AI_ENGINE_ETHOSU)
+    target_include_directories(drivers PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ethosu)
+    target_sources(
+      drivers PRIVATE ethosu/ethosu_driver.c ethosu/ethosu_device_u55_u65.c
+                      ethosu/ethosu_pmu.c)
+  endif()
 endif()

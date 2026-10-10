@@ -9,5 +9,27 @@ config AI_ENGINE
 	---help---
 		Upper-half character driver for hardware AI / NPU engines.
 		A board or architecture lower-half must implement struct
-		aie_ops_s and call aie_register(). There is no in-tree
-		lower-half yet. See include/nuttx/aie/ai_engine.h.
+		aie_ops_s and call aie_register(). See
+		include/nuttx/aie/ai_engine.h.
+
+if AI_ENGINE
+
+config AI_ENGINE_ETHOSU
+	bool "Arm Ethos-U core driver"
+	default n
+	---help---
+		Build the upstream Arm Ethos-U core driver for use by an
+		architecture-specific NuttX AI engine lower-half.
+
+config AI_ENGINE_ETHOSU_TIMEOUT_MS
+	int "Ethos-U inference timeout in milliseconds"
+	default 5000
+	range 1 60000
+	depends on AI_ENGINE_ETHOSU
+
+config AI_ENGINE_ETHOSU_DEBUG
+	bool "Ethos-U verbose logging"
+	default n
+	depends on AI_ENGINE_ETHOSU
+
+endif # AI_ENGINE

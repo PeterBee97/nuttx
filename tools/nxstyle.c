@@ -887,6 +887,13 @@ static const char *g_white_files[] =
   "gd32vw55x/gdwifi/gdwifi_glue.c",
   "gd32vw55x/gdwifi/gdwifi_newlib_compat.c",
   "gd32vw55x/gdble/gd32_ble.c",
+
+  /* Skip the upstream-derived Arm Ethos-U core driver.  Architecture
+   * lower-halves and public NuttX interfaces remain subject to nxstyle.
+   */
+
+  "drivers/aie/ethosu/",
+
   NULL
 };
 

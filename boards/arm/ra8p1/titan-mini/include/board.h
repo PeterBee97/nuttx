@@ -218,7 +218,7 @@ int ra8p1_i2c_initialize(void);
 #endif
 
 #ifdef CONFIG_TITAN_MINI_ETHOSU55
-int ra8p1_ethosu_initialize(const char *devpath);
+int ra8p1_ethosu_initialize(FAR const char *devpath);
 #endif
 
 #ifdef CONFIG_TITAN_MINI_PDM

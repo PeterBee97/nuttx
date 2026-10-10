@@ -30,4 +30,14 @@ DEPPATH += --dep-path aie
 VPATH += :aie
 CFLAGS += -I$(TOPDIR)$(DELIM)drivers$(DELIM)aie
 
+ifeq ($(CONFIG_AI_ENGINE_ETHOSU),y)
+
+CSRCS += ethosu_driver.c ethosu_device_u55_u65.c ethosu_pmu.c
+
+DEPPATH += --dep-path aie$(DELIM)ethosu
+VPATH += :aie$(DELIM)ethosu
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)drivers$(DELIM)aie$(DELIM)ethosu
+
+endif # CONFIG_AI_ENGINE_ETHOSU
+
 endif # CONFIG_AI_ENGINE
