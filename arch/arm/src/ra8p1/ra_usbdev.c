@@ -574,6 +574,14 @@ static int ra_usb_start_in(FAR struct ra_usb_ep_s *privep)
       privep->active = false;
       privep->zlp = false;
     }
+  else
+    {
+      /* EP0 has no configure callback to arm its PID.  Make the loaded
+       * packet available to the host, including control IN responses.
+       */
+
+      ra_usb_pipe_set_pid(privep->pipe, USBFS_PIPECTR_PID_BUF);
+    }
 
   return ret;
 }
