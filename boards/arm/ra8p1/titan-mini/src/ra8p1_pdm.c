@@ -38,6 +38,7 @@
 #include <syslog.h>
 
 #include <nuttx/fs/fs.h>
+#include <nuttx/audio/pdm.h>
 #include <nuttx/irq.h>
 #include <nuttx/mutex.h>
 #include <nuttx/semaphore.h>
@@ -100,9 +101,14 @@ struct ra8p1_pdm_dev_s
   unsigned int head;
   unsigned int tail;
   unsigned int count;
+  uint32_t frames;
+  uint32_t highwater;
   uint32_t overruns;
   uint32_t desyncs;
   uint32_t hwerrors;
+  uint32_t fifoerrors;
+  uint32_t levelerrors;
+  uint32_t shorterrors;
   bool opened;
   bool initialized;
 };
@@ -246,6 +252,11 @@ static void ra8p1_pdm_pair_samples(FAR struct ra8p1_pdm_dev_s *priv)
         }
 
       priv->count++;
+      priv->frames++;
+      if (priv->count > priv->highwater)
+        {
+          priv->highwater = priv->count;
+        }
     }
 
   if (notify)
@@ -264,6 +275,10 @@ static void ra8p1_pdm_check_errors(FAR struct ra8p1_pdm_dev_s *priv,
   if (errors != 0)
     {
       priv->hwerrors++;
+      priv->fifoerrors += (errors & PDM_PDSR_BFOWDF) != 0;
+      priv->levelerrors += (errors &
+                           (PDM_PDSR_OVLDF | PDM_PDSR_OVUDF)) != 0;
+      priv->shorterrors += (errors & PDM_PDSR_SCDF) != 0;
       putreg32(errors, RA8P1_PDM_PDSCR(channel));
     }
 }
@@ -364,9 +379,14 @@ static int ra8p1_pdm_start(FAR struct ra8p1_pdm_dev_s *priv)
   priv->head = 0;
   priv->tail = 0;
   priv->count = 0;
+  priv->frames = 0;
+  priv->highwater = 0;
   priv->overruns = 0;
   priv->desyncs = 0;
   priv->hwerrors = 0;
+  priv->fifoerrors = 0;
+  priv->levelerrors = 0;
+  priv->shorterrors = 0;
   ra8p1_pdm_fifo_reset(&priv->left);
   ra8p1_pdm_fifo_reset(&priv->right);
   nxsem_reset(&priv->waitsem, 0);
@@ -403,6 +423,14 @@ static int ra8p1_pdm_start(FAR struct ra8p1_pdm_dev_s *priv)
       getreg32(RA8P1_PDM_PDDRR(TITAN_PDM_RIGHT_CHANNEL));
     }
 
+  /* The settling interval deliberately fills the FIFO before DATRE.
+   * Discard its latched overflow flags together with the settling samples.
+   */
+
+  putreg32(PDM_PDSCR_CLEAR_MASK,
+           RA8P1_PDM_PDSCR(TITAN_PDM_LEFT_CHANNEL));
+  putreg32(PDM_PDSCR_CLEAR_MASK,
+           RA8P1_PDM_PDSCR(TITAN_PDM_RIGHT_CHANNEL));
   ra_clear_ir(RA_IRQ_PDM_DAT0);
   ra_clear_ir(RA_IRQ_PDM_DAT2);
   putreg32(PDM_PDICR_IDRE,
@@ -411,8 +439,8 @@ static int ra8p1_pdm_start(FAR struct ra8p1_pdm_dev_s *priv)
            RA8P1_PDM_PDICR(TITAN_PDM_RIGHT_CHANNEL));
 
 #ifdef CONFIG_ARCH_IRQPRIO
-  up_prioritize_irq(RA_IRQ_PDM_DAT0, 12 << 4);
-  up_prioritize_irq(RA_IRQ_PDM_DAT2, 12 << 4);
+  up_prioritize_irq(RA_IRQ_PDM_DAT0, NVIC_SYSH_PRIORITY_DEFAULT);
+  up_prioritize_irq(RA_IRQ_PDM_DAT2, NVIC_SYSH_PRIORITY_DEFAULT);
 #endif
 
   up_enable_irq(RA_IRQ_PDM_DAT0);
@@ -618,7 +646,7 @@ static int ra8p1_pdm_ioctl(FAR struct file *filep, int cmd,
   irqstate_t flags;
   int ret;
 
-  if (cmd != FIONREAD)
+  if (cmd != FIONREAD && cmd != PDMIOC_GETSTATS)
     {
       return -ENOTTY;
     }
@@ -629,6 +657,23 @@ static int ra8p1_pdm_ioctl(FAR struct file *filep, int cmd,
     }
 
   flags = enter_critical_section();
+  if (cmd == PDMIOC_GETSTATS)
+    {
+      FAR struct pdm_stats_s *stats = (FAR void *)(uintptr_t)arg;
+
+      stats->frames = priv->frames;
+      stats->overruns = priv->overruns;
+      stats->desyncs = priv->desyncs;
+      stats->hwerrors = priv->hwerrors;
+      stats->fifoerrors = priv->fifoerrors;
+      stats->levelerrors = priv->levelerrors;
+      stats->shorterrors = priv->shorterrors;
+      stats->buffered = priv->count;
+      stats->highwater = priv->highwater;
+      leave_critical_section(flags);
+      return OK;
+    }
+
   ret = priv->count * TITAN_PDM_FRAME_BYTES;
   leave_critical_section(flags);
   *(FAR int *)(uintptr_t)arg = ret;

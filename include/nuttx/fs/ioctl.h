@@ -115,6 +115,8 @@
 #define _PTPBASE        (0x4700) /* PTP ioctl commands */
 #define _DSHOTIOCBASE   (0x4800) /* Dshot device ioctl commands */
 #define _PULSECOUNTBASE (0x4900) /* Pulse count driver ioctl commands */
+#define _PDMIOCBASE     (0x4a00) /* PDM capture ioctl commands */
+#define _PDMIOC(nr)     _IOC(_PDMIOCBASE,nr)
 #define _WLIOCBASE      (0x8b00) /* Wireless modules ioctl network commands */
 
 /* boardctl() commands share the same number space */
