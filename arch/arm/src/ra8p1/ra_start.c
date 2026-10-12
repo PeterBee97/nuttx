@@ -71,6 +71,10 @@ void __start(void)
     }
 
   ra_clockconfig();
+#ifdef CONFIG_ARCH_PERF_EVENTS
+  up_perf_init((void *)(uintptr_t)RA_CPUCLK_FREQUENCY);
+#endif
+
   arm_fpuconfig();
 
   putreg32(NVIC_CFGCON_STKALIGN | NVIC_CFGCON_NONBASETHRDENA,
