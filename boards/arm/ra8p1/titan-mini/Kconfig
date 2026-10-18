@@ -176,6 +176,15 @@ config TITAN_MINI_AUDIO
 		Enable 16 kHz, signed 16-bit stereo playback through SSI0 and
 		the onboard ES8156 codec.  The PCM output is /dev/audio/pcm0.
 
+config TITAN_MINI_AUDIO_VOLUME
+	hex "ES8156 initial volume register value"
+	default 0xbf
+	range 0x00 0xff
+	depends on TITAN_MINI_AUDIO
+	help
+		Initial value of ES8156 register 0x14.  Use 0x80 for the
+		speaker connected to the microphone acoustic test setup.
+
 config TITAN_MINI_ADC
 	bool "Titan Mini ADC_B0 channel 0 on P0.00"
 	default n

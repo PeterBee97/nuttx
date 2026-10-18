@@ -77,7 +77,7 @@ static const struct ra8p1_es8156_reg_s g_es8156_init[] =
   { 0x00, 0x02 },
   { 0x00, 0x03 },
   { 0x25, 0x20 },
-  { 0x14, 0xbf },
+  { 0x14, CONFIG_TITAN_MINI_AUDIO_VOLUME },
 };
 
 /****************************************************************************

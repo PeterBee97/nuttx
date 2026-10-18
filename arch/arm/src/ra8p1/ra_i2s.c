@@ -515,8 +515,10 @@ static int ra_i2s_hardware_initialize(FAR struct ra_i2s_s *priv)
     }
 
 #ifdef CONFIG_ARCH_IRQPRIO
-  up_prioritize_irq(RA_IRQ_SSI0_TXI, 2 << 4);
-  up_prioritize_irq(RA_IRQ_SSI0_INT, 2 << 4);
+  /* SSI handlers use work queues and must obey OS critical sections. */
+
+  up_prioritize_irq(RA_IRQ_SSI0_TXI, NVIC_SYSH_PRIORITY_DEFAULT);
+  up_prioritize_irq(RA_IRQ_SSI0_INT, NVIC_SYSH_PRIORITY_DEFAULT);
 #endif
 
   ra_clear_ir(RA_IRQ_SSI0_TXI);
