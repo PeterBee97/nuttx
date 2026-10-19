@@ -78,6 +78,12 @@
 
 /* MRAM registers */
 
+#define RA8P1_SRAM_PRCR           0x40002000u
+#define RA8P1_SRAM_WTSC           0x40002008u
+#define SRAM_PRCR_KEY            0xa500u
+#define SRAM_PRCR_WRITE          0x0001u
+#define SRAM_WTSC_WAIT           0x01u
+
 #define RA8P1_MRAM_PREFETCH       (RA8P1_MRAM_BASE + 0x0000)
 #define RA8P1_MRAM_CODE_FREQ      (RA8P1_MRAM_BASE + 0x0004)
 #define RA8P1_MRAM_EXTRA_FREQ     (RA8P1_MRAM_BASE + 0x0008)

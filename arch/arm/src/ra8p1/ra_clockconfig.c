@@ -223,6 +223,18 @@ void ra_clockconfig(void)
 
   putreg32(RA_SYSTEM_DIVIDERS, RA8P1_SYSTEM_SCKDIVCR);
   putreg16(RA_SYSTEM_DIVIDERS2, RA8P1_SYSTEM_SCKDIVCR2);
+
+#ifdef CONFIG_RA8P1_SRAM_WAIT
+  /* SRAM requires a wait cycle at the selected 250 MHz ICLK.  Configure
+   * it before switching to the high-frequency clock source.
+   */
+
+  putreg16(SRAM_PRCR_KEY | SRAM_PRCR_WRITE, RA8P1_SRAM_PRCR);
+  putreg8(SRAM_WTSC_WAIT, RA8P1_SRAM_WTSC);
+  (void)getreg8(RA8P1_SRAM_WTSC);
+  putreg16(SRAM_PRCR_KEY, RA8P1_SRAM_PRCR);
+#endif
+
   putreg8(RA_SYSTEM_CLOCK_SOURCE, RA8P1_SYSTEM_SCKSCR);
 
   /* Allow the PLL supply to settle for at least 150 us at 1 GHz. */

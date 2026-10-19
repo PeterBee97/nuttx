@@ -4,6 +4,14 @@ config ARCH_CHIP_R7KA8P1KF
 	bool
 	default y
 
+config RA8P1_SRAM_WAIT
+	bool "Insert SRAM wait cycle"
+	default y
+	help
+		Enable the SRAM wait cycle required when ICLK exceeds half
+		its maximum rated frequency. The current 250 MHz clock profile
+		requires this option to avoid incorrect SRAM reads.
+
 config RA_SCI1_UART
 	bool "SCI1 UART"
 	default y
