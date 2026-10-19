@@ -38,6 +38,16 @@ config RA8P1_I2C
 	select I2C_DRIVER
 	select I2C_POLLED
 
+config RA8P1_I2C_SCHEDLOCK
+	bool "Prevent task preemption during polling IIC transfers"
+	default n
+	depends on RA8P1_I2C
+	help
+		Keep the current task running while a polling transfer is active.
+		Long preemption between bytes can trigger the IIC hardware
+		timeout or corrupt sensor register reads. Interrupts remain
+		enabled. Use short transfers when real-time tasks are present.
+
 config RA8P1_I2C0
 	bool "IIC0 master"
 	default n

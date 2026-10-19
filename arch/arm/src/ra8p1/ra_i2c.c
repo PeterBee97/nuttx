@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <assert.h>
+#include <sched.h>
 
 #include <nuttx/clock.h>
 #include <nuttx/i2c/i2c_master.h>
@@ -575,6 +576,9 @@ static int ra_i2c_transfer(FAR struct i2c_master_s *dev,
       goto out;
     }
 
+#ifdef CONFIG_RA8P1_I2C_SCHEDLOCK
+  sched_lock();
+#endif
   for (i = 0; i < count; i++)
     {
       FAR struct i2c_msg_s *msg = &msgs[i];
@@ -632,6 +636,9 @@ static int ra_i2c_transfer(FAR struct i2c_master_s *dev,
       ra_i2c_abort(priv);
     }
 
+#ifdef CONFIG_RA8P1_I2C_SCHEDLOCK
+  sched_unlock();
+#endif
 out:
   nxmutex_unlock(&priv->lock);
   return ret;
