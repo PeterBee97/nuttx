@@ -431,6 +431,11 @@ static int ra_sdhi_transfer(FAR struct ra_sdhi_dev_s *priv)
             }
         }
 
+      /* Acknowledge before draining/filling the FIFO.  The next block may
+       * become ready during the final data-port access.
+       */
+
+      ra_sdhi_putreg(priv, RA8P1_SDHI_SD_INFO2_OFFSET, ~ready);
       for (offset = 0; offset < priv->blocklen; offset += sizeof(word))
         {
           if (priv->receive)
@@ -460,7 +465,6 @@ static int ra_sdhi_transfer(FAR struct ra_sdhi_dev_s *priv)
 
       priv->buffer += priv->blocklen;
       priv->remaining -= priv->blocklen;
-      ra_sdhi_putreg(priv, RA8P1_SDHI_SD_INFO2_OFFSET, ~ready);
     }
 
   for (; ; )
