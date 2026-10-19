@@ -16,6 +16,7 @@
 
 #include <nuttx/audio/audio.h>
 #include <nuttx/audio/i2s.h>
+#include <nuttx/clock.h>
 #include <nuttx/irq.h>
 #include <nuttx/mutex.h>
 #include <nuttx/queue.h>
@@ -119,6 +120,21 @@ static struct ra_i2s_s g_ra_i2s =
   },
   .lock = NXMUTEX_INITIALIZER,
 };
+
+#ifdef CONFIG_RA8P1_SSI0_REFERENCE
+#define RA_REFERENCE_SIZE 2048
+
+static struct
+{
+  uint32_t time[RA_REFERENCE_SIZE];
+  int16_t sample[RA_REFERENCE_SIZE];
+  uint32_t written;
+  uint32_t clock;
+  uint32_t fraction;
+  int16_t left;
+  bool right;
+} g_reference;
+#endif
 
 /****************************************************************************
  * Private Functions
@@ -262,6 +278,13 @@ static bool ra_i2s_feed_fifo(FAR struct ra_i2s_s *priv)
                 ((fsr & SSI_SSIFSR_TDC_MASK) >>
                  SSI_SSIFSR_TDC_SHIFT);
 
+#ifdef CONFIG_RA8P1_SSI0_REFERENCE
+  g_reference.clock = (uint32_t)perf_gettime() +
+    (uint64_t)(SSI_FIFO_STAGES - free_stages) * perf_getfreq() /
+    (2 * RA_I2S_SAMPLE_RATE);
+  g_reference.fraction = 0;
+#endif
+
   while (free_stages > 0)
     {
       ra_i2s_start_next(priv);
@@ -280,6 +303,28 @@ static bool ra_i2s_feed_fifo(FAR struct ra_i2s_s *priv)
       free_stages -= samples;
       while (samples-- > 0)
         {
+#ifdef CONFIG_RA8P1_SSI0_REFERENCE
+          if (!g_reference.right)
+            {
+              g_reference.left = (int16_t)*priv->tx;
+            }
+          else
+            {
+              unsigned int slot =
+                g_reference.written % RA_REFERENCE_SIZE;
+
+              g_reference.sample[slot] =
+                ((int32_t)g_reference.left + (int16_t)*priv->tx) / 2;
+              g_reference.time[slot] = g_reference.clock;
+              g_reference.written++;
+              g_reference.fraction += perf_getfreq();
+              g_reference.clock +=
+                g_reference.fraction / RA_I2S_SAMPLE_RATE;
+              g_reference.fraction %= RA_I2S_SAMPLE_RATE;
+            }
+
+          g_reference.right = !g_reference.right;
+#endif
           putreg16(*priv->tx++, RA8P1_SSI_SSIFTDR);
           wrote = true;
         }
@@ -353,6 +398,11 @@ static int ra_i2s_hardware_start(FAR struct ra_i2s_s *priv,
       return -ETIMEDOUT;
     }
 
+#ifdef CONFIG_RA8P1_SSI0_REFERENCE
+  g_reference.clock = perf_gettime();
+  g_reference.fraction = 0;
+  g_reference.right = false;
+#endif
   *completed |= ra_i2s_feed_fifo(priv);
   putreg32(fcr | SSI_SSIFCR_TIE, RA8P1_SSI_SSIFCR);
   putreg32(RA_I2S_SSICR_CONFIG | SSI_SSICR_TUIEN |
@@ -681,6 +731,67 @@ static int ra_i2s_ioctl(FAR struct i2s_dev_s *dev, int cmd,
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
+
+#ifdef CONFIG_RA8P1_SSI0_REFERENCE
+int16_t ra_i2s_reference(uint32_t time)
+{
+  uint32_t end = g_reference.written;
+  uint32_t begin = end > RA_REFERENCE_SIZE ?
+                   end - RA_REFERENCE_SIZE : 0;
+  uint32_t middle;
+  uint32_t first;
+  uint32_t second;
+  int32_t span;
+  int32_t offset;
+
+  /* Binary search also handles the performance counter wrapping. The
+   * retained history is much shorter than half its wrap interval.
+   */
+
+  if (end == begin ||
+      (int32_t)(time - g_reference.time[begin % RA_REFERENCE_SIZE]) < 0 ||
+      (int32_t)(time -
+        g_reference.time[(end - 1) % RA_REFERENCE_SIZE]) > 0)
+    {
+      return 0;
+    }
+
+  while (end - begin > 1)
+    {
+      middle = begin + (end - begin) / 2;
+      if ((int32_t)(time -
+          g_reference.time[middle % RA_REFERENCE_SIZE]) >= 0)
+        {
+          begin = middle;
+        }
+      else
+        {
+          end = middle;
+        }
+    }
+
+  first = begin % RA_REFERENCE_SIZE;
+  if (begin + 1 == g_reference.written)
+    {
+      return g_reference.sample[first];
+    }
+
+  second = (begin + 1) % RA_REFERENCE_SIZE;
+  span = g_reference.time[second] - g_reference.time[first];
+  offset = time - g_reference.time[first];
+
+  /* A stopped/restarted transmitter leaves a gap, not a ramp. */
+
+  if (span <= 0 || span > (int32_t)(perf_getfreq() / 8000))
+    {
+      return 0;
+    }
+
+  return g_reference.sample[first] +
+         (int64_t)(g_reference.sample[second] -
+                   g_reference.sample[first]) * offset / span;
+}
+#endif
 
 /****************************************************************************
  * Name: ra_i2s_initialize

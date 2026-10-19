@@ -190,6 +190,14 @@ config RA8P1_SSI0
 	help
 		Enable SSI0 as a 16-bit stereo playback I2S lower-half.
 
+config RA8P1_SSI0_REFERENCE
+	bool "Timestamped SSI playback reference"
+	default n
+	depends on RA8P1_SSI0
+	help
+		Retain 128 ms of mono playback with performance-counter timestamps
+		for a board microphone echo reference. Uses 12 KiB of SRAM.
+
 config RA8P1_SSI0_MAXINFLIGHT
 	int "Maximum queued SSI0 transfers"
 	default 8

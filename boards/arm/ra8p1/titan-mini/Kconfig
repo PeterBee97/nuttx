@@ -245,6 +245,22 @@ config TITAN_MINI_PDM
 		channel is sampled on the falling edge and the right channel is
 		sampled on the rising edge.
 
+config TITAN_MINI_PDM_REFERENCE
+	bool "Capture synchronized speaker reference"
+	default n
+	depends on TITAN_MINI_PDM && RA8P1_SSI0
+	select RA8P1_SSI0_REFERENCE
+	help
+		Add /dev/pdmref with interleaved left, right and playback reference
+		samples. Only one of pdm0 and pdmref may be opened at a time.
+		The reference adds two bytes per capture ring frame.
+
+config TITAN_MINI_PDM_REFERENCE_RATE
+	int "Measured PDM rate for playback synchronization"
+	default 16547
+	range 16000 20000
+	depends on TITAN_MINI_PDM_REFERENCE
+
 config TITAN_MINI_PDM_BUFFER_FRAMES
 	int "PDM capture ring size in stereo frames"
 	default 4096

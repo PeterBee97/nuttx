@@ -39,6 +39,7 @@
 
 #include <nuttx/fs/fs.h>
 #include <nuttx/audio/pdm.h>
+#include <nuttx/clock.h>
 #include <nuttx/irq.h>
 #include <nuttx/mutex.h>
 #include <nuttx/semaphore.h>
@@ -53,6 +54,9 @@
 #include "ra_clockconfig.h"
 #include "ra_icu.h"
 #include "ra_pinmux.h"
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+#  include "ra_i2s.h"
+#endif
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -69,6 +73,12 @@
 #define TITAN_PDM_FRAME_BYTES         (2 * sizeof(int16_t))
 #define TITAN_PDM_FILTER_SETTLE_US    37000
 #define TITAN_PDM_STOP_TIMEOUT_US     1000
+
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+#  define TITAN_PDM_CHANNELS          3
+#else
+#  define TITAN_PDM_CHANNELS          2
+#endif
 
 #define TITAN_PDM_HPF_SHIFT           0x3f61
 #define TITAN_PDM_HPF_GAIN            0x3ec1
@@ -97,7 +107,11 @@ struct ra8p1_pdm_dev_s
   FAR struct pollfd *fds;
   struct ra8p1_pdm_fifo_s left;
   struct ra8p1_pdm_fifo_s right;
-  int16_t ring[CONFIG_TITAN_MINI_PDM_BUFFER_FRAMES][2];
+  int16_t ring[CONFIG_TITAN_MINI_PDM_BUFFER_FRAMES][TITAN_PDM_CHANNELS];
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+  uint32_t sampletime;
+  uint32_t fraction;
+#endif
   unsigned int head;
   unsigned int tail;
   unsigned int count;
@@ -125,6 +139,10 @@ static int ra8p1_pdm_ioctl(FAR struct file *filep, int cmd,
                            unsigned long arg);
 static int ra8p1_pdm_poll(FAR struct file *filep, FAR struct pollfd *fds,
                           bool setup);
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+static ssize_t ra8p1_pdm_refread(FAR struct file *filep, FAR char *buffer,
+                                size_t buflen);
+#endif
 
 /****************************************************************************
  * Private Data
@@ -163,6 +181,17 @@ static const struct file_operations g_pdm_fops =
 };
 
 static struct ra8p1_pdm_dev_s g_pdm;
+
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+static const struct file_operations g_pdm_ref_fops =
+{
+  .open  = ra8p1_pdm_open,
+  .close = ra8p1_pdm_close,
+  .read  = ra8p1_pdm_refread,
+  .ioctl = ra8p1_pdm_ioctl,
+  .poll  = ra8p1_pdm_poll,
+};
+#endif
 
 /****************************************************************************
  * Private Functions
@@ -224,6 +253,31 @@ static void ra8p1_pdm_pair_samples(FAR struct ra8p1_pdm_dev_s *priv)
 {
   bool notify = false;
 
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+  unsigned int pending = MIN(priv->left.count, priv->right.count);
+
+  if (pending > 0)
+    {
+      uint32_t first = (uint32_t)perf_gettime() -
+        (uint64_t)(pending - 1) * perf_getfreq() /
+        CONFIG_TITAN_MINI_PDM_REFERENCE_RATE;
+
+      if (priv->frames == 0)
+        {
+          priv->sampletime = first;
+          priv->fraction = 0;
+        }
+      else
+        {
+          /* Re-anchor the pending batch to the current capture timestamp.
+           * Fractional sample spacing is retained within the batch.
+           */
+
+          priv->sampletime = first;
+        }
+    }
+#endif
+
   while (priv->left.count > 0 && priv->right.count > 0)
     {
       if (priv->count >= CONFIG_TITAN_MINI_PDM_BUFFER_FRAMES)
@@ -245,6 +299,14 @@ static void ra8p1_pdm_pair_samples(FAR struct ra8p1_pdm_dev_s *priv)
 
       priv->ring[priv->head][0] = ra8p1_pdm_fifo_get(&priv->left);
       priv->ring[priv->head][1] = ra8p1_pdm_fifo_get(&priv->right);
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+      priv->ring[priv->head][2] =
+        ra_i2s_reference(priv->sampletime - perf_getfreq() / 125);
+      priv->fraction += perf_getfreq();
+      priv->sampletime += priv->fraction /
+                          CONFIG_TITAN_MINI_PDM_REFERENCE_RATE;
+      priv->fraction %= CONFIG_TITAN_MINI_PDM_REFERENCE_RATE;
+#endif
       priv->head++;
       if (priv->head >= CONFIG_TITAN_MINI_PDM_BUFFER_FRAMES)
         {
@@ -552,8 +614,8 @@ static int ra8p1_pdm_close(FAR struct file *filep)
   return ret;
 }
 
-static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
-                              size_t buflen)
+static ssize_t ra8p1_pdm_readframes(FAR struct file *filep, FAR char *buffer,
+                                   size_t buflen, unsigned int channels)
 {
   FAR struct ra8p1_pdm_dev_s *priv = filep->f_inode->i_private;
   irqstate_t flags;
@@ -562,13 +624,14 @@ static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
   size_t first;
   size_t second;
   int ret;
+  size_t framebytes = channels * sizeof(int16_t);
 
-  if (buffer == NULL || buflen < TITAN_PDM_FRAME_BYTES)
+  if (buffer == NULL || buflen < framebytes)
     {
       return -EINVAL;
     }
 
-  requested = buflen / TITAN_PDM_FRAME_BYTES;
+  requested = buflen / framebytes;
   ret = nxmutex_lock(&priv->readlock);
   if (ret < 0)
     {
@@ -600,13 +663,27 @@ static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
             }
 
           second = frames - first;
-          memcpy(buffer, &priv->ring[priv->tail][0],
-                 first * TITAN_PDM_FRAME_BYTES);
-          if (second > 0)
+          if (channels == TITAN_PDM_CHANNELS)
             {
-              memcpy(buffer + first * TITAN_PDM_FRAME_BYTES,
-                     &priv->ring[0][0],
-                     second * TITAN_PDM_FRAME_BYTES);
+              memcpy(buffer, &priv->ring[priv->tail][0],
+                     first * framebytes);
+              if (second > 0)
+                {
+                  memcpy(buffer + first * framebytes,
+                         &priv->ring[0][0], second * framebytes);
+                }
+            }
+          else
+            {
+              size_t i;
+
+              for (i = 0; i < frames; i++)
+                {
+                  memcpy(buffer + i * framebytes,
+                         priv->ring[(priv->tail + i) %
+                           CONFIG_TITAN_MINI_PDM_BUFFER_FRAMES],
+                         framebytes);
+                }
             }
 
           priv->tail += frames;
@@ -617,7 +694,7 @@ static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
 
           priv->count -= frames;
           leave_critical_section(flags);
-          ret = frames * TITAN_PDM_FRAME_BYTES;
+          ret = frames * framebytes;
           break;
         }
 
@@ -638,6 +715,20 @@ static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
   nxmutex_unlock(&priv->readlock);
   return ret;
 }
+
+static ssize_t ra8p1_pdm_read(FAR struct file *filep, FAR char *buffer,
+                             size_t buflen)
+{
+  return ra8p1_pdm_readframes(filep, buffer, buflen, 2);
+}
+
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+static ssize_t ra8p1_pdm_refread(FAR struct file *filep, FAR char *buffer,
+                                size_t buflen)
+{
+  return ra8p1_pdm_readframes(filep, buffer, buflen, 3);
+}
+#endif
 
 static int ra8p1_pdm_ioctl(FAR struct file *filep, int cmd,
                            unsigned long arg)
@@ -675,6 +766,13 @@ static int ra8p1_pdm_ioctl(FAR struct file *filep, int cmd,
     }
 
   ret = priv->count * TITAN_PDM_FRAME_BYTES;
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+  if (filep->f_inode->u.i_ops == &g_pdm_ref_fops)
+    {
+      ret = priv->count * 3 * sizeof(int16_t);
+    }
+#endif
+
   leave_critical_section(flags);
   *(FAR int *)(uintptr_t)arg = ret;
   return OK;
@@ -754,6 +852,18 @@ int ra8p1_pdm_initialize(void)
              TITAN_PDM_DEVICE, ret);
       return ret;
     }
+
+#ifdef CONFIG_TITAN_MINI_PDM_REFERENCE
+  ret = register_driver("/dev/pdmref", &g_pdm_ref_fops, 0444, priv);
+  if (ret < 0)
+    {
+      unregister_driver(TITAN_PDM_DEVICE);
+      nxsem_destroy(&priv->waitsem);
+      nxmutex_destroy(&priv->readlock);
+      nxmutex_destroy(&priv->lock);
+      return ret;
+    }
+#endif
 
   priv->initialized = true;
   syslog(LOG_INFO, "PDM: %s is 16 kHz 16-bit stereo (L=fall, R=rise)\n",
