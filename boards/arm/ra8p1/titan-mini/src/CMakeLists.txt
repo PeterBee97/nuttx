@@ -81,5 +81,18 @@ if(CONFIG_RA8P1_ETHERNET)
 endif()
 
 target_sources(board PRIVATE ${SRCS})
+if(CONFIG_TITAN_MINI_VOICE_DEMO_AUTOSTART)
+  nuttx_add_romfs(
+    NAME
+    etc
+    MOUNTPOINT
+    etc
+    RCRAWS
+    etc/init.d/rcS
+    PATH
+    ${CMAKE_CURRENT_BINARY_DIR}/etc)
+  target_link_libraries(board PRIVATE romfs_etc)
+endif()
+
 set_property(GLOBAL PROPERTY LD_SCRIPT
                              "${NUTTX_BOARD_DIR}/scripts/titan-mini.ld")

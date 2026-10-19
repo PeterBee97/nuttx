@@ -124,6 +124,18 @@ config TITAN_MINI_SDHI
 		Enable the onboard four-bit microSD slot on SDHI0.  An inserted
 		card is registered through the NuttX MMC/SD stack as /dev/mmcsd0.
 
+config TITAN_MINI_VOICE_DEMO_AUTOSTART
+	bool "Start the SD voice demo at boot"
+	default n
+	depends on TITAN_MINI_SDHI && TESTING_TITAN_DEMO_STORAGE
+	depends on SYSTEM_NSH
+	select FS_ROMFS
+	select ETC_ROMFS
+	help
+		Run titan_asr demo-boot from the NSH startup script. The app
+		registers GPT partitions, mounts FAT storage and starts the
+		voice demo and HTTP file service without formatting the card.
+
 config TITAN_MINI_SPI1
 	bool "Titan Mini SPI1 header"
 	default n

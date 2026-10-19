@@ -62,4 +62,8 @@ ifeq ($(CONFIG_RA8P1_ETHERNET),y)
 CSRCS += ra8p1_ethernet.c
 endif
 
+ifeq ($(CONFIG_TITAN_MINI_VOICE_DEMO_AUTOSTART),y)
+RCRAWS += etc/init.d/rcS
+endif
+
 include $(TOPDIR)/boards/Board.mk
